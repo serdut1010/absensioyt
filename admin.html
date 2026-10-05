@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Absensi | OYITOK GROUP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root { --ink:#162b3d; --muted:#71808f; --teal:#163a63; --teal-dark:#0d2a4a; --mint:#e5edf7; --cream:#eef2f7; --line:#c8d3df; --gold:#c7952d; --gold-dark:#8e681b; --gold-soft:#fff3d2; --late:#fff0d7; --late-ink:#a26028; }
+      * { box-sizing:border-box; }
+      body { margin:0; color:var(--ink); background:var(--cream); font-family:"DM Sans",sans-serif; }
+      body:before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; background:radial-gradient(circle at 82% 5%,rgba(226,190,94,.3),transparent 25%),linear-gradient(135deg,rgba(255,255,255,.42),transparent 40%); }
+      main { width:min(1180px,calc(100% - 48px)); margin:0 auto; padding:34px 0 60px; }
+      header { display:flex; align-items:end; justify-content:space-between; gap:20px; padding-bottom:24px; border-bottom:1px solid var(--line); }
+      .eyebrow { margin:0 0 8px; color:var(--teal); font-size:10px; font-weight:700; letter-spacing:1.7px; }
+      h1 { margin:0; font:700 clamp(30px,5vw,52px)/1 "Space Grotesk",sans-serif; letter-spacing:-2px; }
+      .header-note { margin:0; color:var(--muted); font-size:12px; text-align:right; }
+      .toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:12px; margin:28px 0 18px; }
+      label { display:grid; gap:6px; color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.6px; }
+      select,input,button { min-height:38px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); font:12px "DM Sans",sans-serif; }
+      select,input { padding:0 11px; }
+      button { padding:0 15px; background:var(--gold); color:#fff; border-color:var(--gold); font-weight:700; cursor:pointer; }
+      button:hover { background:var(--teal-dark); }
+      .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:20px 0 28px; }
+      .summary-card { padding:19px 20px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.82); }
+      .summary-card span { display:block; color:var(--muted); font-size:11px; }
+      .summary-card strong { display:block; margin-top:8px; font:700 30px "Space Grotesk",sans-serif; }
+      .summary-card.present strong { color:var(--teal-dark); }
+      .summary-card.late strong { color:var(--late-ink); }
+      .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.82); }
+      table { width:100%; border-collapse:collapse; min-width:760px; text-align:left; }
+      th { padding:13px 16px; background:var(--gold-soft); color:var(--gold-dark); font-size:10px; letter-spacing:.7px; text-transform:uppercase; }
+      td { padding:15px 16px; border-top:1px solid var(--line); font-size:12px; vertical-align:middle; }
+      td small { display:block; margin-top:3px; color:var(--muted); font-size:10px; }
+      .status { display:inline-block; padding:6px 9px; border-radius:20px; font-size:10px; font-weight:700; }
+      .status.present { color:var(--teal-dark); background:var(--mint); }
+      .status.late { color:var(--late-ink); background:var(--late); }
+      .empty { padding:28px; color:var(--muted); text-align:center; font-size:12px; }
+      .error { margin:14px 0; padding:12px; border-radius:8px; background:#fff0ed; color:#bc4e43; font-size:12px; }
+      footer { display:flex; justify-content:space-between; gap:20px; margin-top:30px; color:#9bacaa; font-size:9px; letter-spacing:1px; }
+      @media (max-width:700px) { main { width:min(100% - 32px,1180px); padding-top:22px; } header { display:block; }.header-note { margin-top:12px; text-align:left; }.summary { grid-template-columns:1fr; gap:10px; }.summary-card { padding:14px 16px; }.toolbar { align-items:stretch; flex-direction:column; }.toolbar label,.toolbar select,.toolbar input,.toolbar button { width:100%; } footer { display:block; } footer span { display:block; margin-top:8px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div><p class="eyebrow">AREA ADMINISTRATOR</p><h1>Rekap absensi</h1></div>
+        <p class="header-note">Data kehadiran hanya ditampilkan di halaman admin ini.</p>
+      </header>
+
+      <section class="toolbar" aria-label="Filter rekap absensi">
+        <label>Bulan<input id="monthFilter" type="month" /></label>
+        <label>Status<select id="statusFilter"><option value="all">Semua status</option><option value="Hadir">Hadir</option><option value="Terlambat">Terlambat</option></select></label>
+        <button id="refreshButton" type="button">Muat ulang data</button>
+        <button id="exportButton" type="button">Export CSV</button>
+      </section>
+      <div id="errorMessage" class="error" hidden></div>
+
+      <section class="summary" aria-label="Ringkasan kehadiran">
+        <article class="summary-card"><span>Total absensi</span><strong id="totalCount">0</strong></article>
+        <article class="summary-card present"><span>Hadir</span><strong id="presentCount">0</strong></article>
+        <article class="summary-card late"><span>Terlambat</span><strong id="lateCount">0</strong></article>
+      </section>
+
+      <section class="table-wrap">
+        <table>
+          <thead><tr><th>Nama</th><th>Hari</th><th>Tanggal</th><th>Bulan</th><th>Waktu</th><th>Status</th><th>Lokasi</th></tr></thead>
+          <tbody id="recordTable"><tr><td class="empty" colspan="7">Memuat data absensi...</td></tr></tbody>
+        </table>
+      </section>
+      <footer><span>ABSENSI OYITOK GROUP / ADMIN</span><span>Database lokal aktif</span></footer>
+    </main>
+    <script>
+      const DB_NAME = "hadirin-db";
+      const STORE_NAME = "attendance";
+      let records = [];
+      const monthFilter = document.querySelector("#monthFilter");
+      const statusFilter = document.querySelector("#statusFilter");
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[character]));
+      const recordDate = (record) => { const date = new Date(record.date); return Number.isNaN(date.getTime()) ? new Date() : date; };
+      const dateParts = (date) => ({ day: new Intl.DateTimeFormat("id-ID", { weekday:"long" }).format(date), date: new Intl.DateTimeFormat("id-ID", { day:"numeric" }).format(date), month: new Intl.DateTimeFormat("id-ID", { month:"long", year:"numeric" }).format(date) });
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, 1);
+          request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME, { keyPath:"id", autoIncrement:true });
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      async function getRecords() {
+        const database = await openDatabase();
+        return new Promise((resolve, reject) => {
+          const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+          request.onsuccess = () => resolve(request.result.sort((first, second) => recordDate(second) - recordDate(first)));
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function filteredRecords() {
+        const selectedMonth = monthFilter.value;
+        const selectedStatus = statusFilter.value;
+        return records.filter((record) => {
+          const date = recordDate(record);
+          const monthMatches = !selectedMonth || `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}` === selectedMonth;
+          return monthMatches && (selectedStatus === "all" || record.status === selectedStatus);
+        });
+      }
+
+      function render() {
+        const visibleRecords = filteredRecords();
+        document.querySelector("#totalCount").textContent = visibleRecords.length;
+        document.querySelector("#presentCount").textContent = visibleRecords.filter((record) => record.status === "Hadir").length;
+        document.querySelector("#lateCount").textContent = visibleRecords.filter((record) => record.status === "Terlambat").length;
+        const table = document.querySelector("#recordTable");
+        if (!visibleRecords.length) { table.innerHTML = '<tr><td class="empty" colspan="7">Belum ada data sesuai filter.</td></tr>'; return; }
+        table.innerHTML = visibleRecords.map((record) => {
+          const parts = dateParts(recordDate(record));
+          return `<tr><td><strong>${escapeHtml(record.name)}</strong><small>${escapeHtml(record.locationName)}</small></td><td>${parts.day}</td><td>${parts.date}</td><td>${parts.month}</td><td>${escapeHtml(record.time)}</td><td><span class="status ${record.status === "Hadir" ? "present" : "late"}">${escapeHtml(record.status)}</span></td><td>${escapeHtml(record.locationName)}</td></tr>`;
+        }).join("");
+      }
+
+      async function loadRecords() {
+        try { records = await getRecords(); document.querySelector("#errorMessage").hidden = true; render(); }
+        catch { const error = document.querySelector("#errorMessage"); error.textContent = "Database lokal tidak dapat diakses. Buka halaman ini melalui localhost atau HTTPS."; error.hidden = false; }
+      }
+
+      function exportCsv() {
+        const rows = filteredRecords().map((record) => { const parts = dateParts(recordDate(record)); return [record.name, parts.day, parts.date, parts.month, record.time, record.status, record.locationName]; });
+        const csv = [["Nama","Hari","Tanggal","Bulan","Waktu","Status","Lokasi"], ...rows].map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+        const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type:"text/csv;charset=utf-8" })); link.download = "rekap-absensi.csv"; link.click(); URL.revokeObjectURL(link.href);
+      }
+
+      const now = new Date();
+      monthFilter.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      monthFilter.addEventListener("change", render);
+      statusFilter.addEventListener("change", render);
+      document.querySelector("#refreshButton").addEventListener("click", loadRecords);
+      document.querySelector("#exportButton").addEventListener("click", exportCsv);
+      loadRecords();
+    </script>
+  </body>
+</html>
