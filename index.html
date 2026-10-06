@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#163a63" />
     <title>ABSENSI OYITOK GROUP | Absensi Digital</title>
+    <script>
+      if (window.location.protocol === "file:") {
+        window.location.replace("http://localhost:8080/index.html");
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -14,7 +19,7 @@
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#top" aria-label="ABSENSI OYITOK GROUP home">
-          <img class="brand-logo" src="logo-oyitok.png" alt="OYITOK GROUP" hidden onload="this.hidden=false" onerror="this.hidden=true; this.nextElementSibling.hidden=false;" />
+          <img class="brand-logo" src="logo-oyitok.png" alt="OYITOK GROUP" style="display:block;width:180px;max-width:48vw;height:auto;max-height:40px;object-fit:contain" hidden onload="this.hidden=false" onerror="this.hidden=true; this.nextElementSibling.hidden=false;" />
           <span class="brand-fallback" hidden><span class="brand-mark">O</span><span>OYITOK GROUP<span class="brand-dot">.</span></span></span>
         </a>
         <div class="topbar-right">
@@ -57,13 +62,13 @@
 
               <button class="primary-button" type="submit"><span>OK / Simpan absen</span><span class="button-arrow">→</span></button>
             </form>
-            <p class="privacy-note">Data tersimpan aman di perangkat ini melalui database lokal.</p>
+            <p class="privacy-note">Absensi tersimpan di server bersama dan muncul di halaman admin.</p>
           </div>
 
         </section>
 
       </main>
-      <footer><span>ABSENSI OYITOK GROUP / ABSENSI DIGITAL</span><span>Database lokal aktif</span></footer>
+      <footer><span>ABSENSI OYITOK GROUP / ABSENSI DIGITAL</span><span>Database server aktif</span></footer>
     </div>
     <div id="cameraModal" class="camera-modal" aria-hidden="true">
       <div class="camera-dialog" role="dialog" aria-modal="true" aria-labelledby="cameraTitle">

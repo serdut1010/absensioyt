@@ -1,10 +1,9 @@
-const DB_NAME = "hadirin-db";
-const STORE_NAME = "attendance";
 const PERSONAL_BARCODES = {
   MARIA: "OYITOK-MARIA-001",
   SHERLY: "OYITOK-SHERLY-001",
   SAVINA: "OYITOK-SAVINA-001"
 };
+const API_URL = `http://${window.location.hostname || "localhost"}:8080/api/attendance`;
 let selectedLocation = null;
 let scannedBarcode = "";
 let scannedPerson = "";
@@ -19,23 +18,14 @@ const $ = (selector) => document.querySelector(selector);
 const formatDate = (date) => new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(date);
 const formatTime = (date) => new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(date);
 
-function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
 async function saveRecord(record) {
-  const database = await openDatabase();
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(STORE_NAME, "readwrite");
-    transaction.objectStore(STORE_NAME).add(record);
-    transaction.oncomplete = resolve;
-    transaction.onerror = () => reject(transaction.error);
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(record)
   });
+  if (!response.ok) throw new Error("Absensi gagal disimpan ke server");
+  return response.json();
 }
 
 function showNotice(message, type = "error") {
@@ -102,7 +92,7 @@ function acceptScan(value) {
   scannedBarcode = value;
   scannedPerson = Object.keys(PERSONAL_BARCODES).find((person) => PERSONAL_BARCODES[person] === value);
   stopCamera();
-  $("#scanStatus").textContent = `Barcode terverifikasi atas nama ${scannedPerson}.`;
+  $("#scanStatus").textContent = `Barcode ${scannedPerson} terverifikasi. Tekan OK / Simpan absen untuk mencatat kehadiran.`;
   showNotice(`Barcode ${scannedPerson} berhasil dipindai.`, "success");
   return true;
 }
@@ -147,7 +137,7 @@ $("#attendanceForm").addEventListener("submit", async (event) => {
   const isPresent = now.getHours() < 7 || (now.getHours() === 7 && now.getMinutes() <= 45);
   const record = { name: scannedPerson, locationName: selectedLocation.name, latitude: selectedLocation.latitude, longitude: selectedLocation.longitude, status: isPresent ? "Hadir" : "Terlambat", time: formatTime(now), date: now.toISOString(), month: now.getMonth() + 1, year: now.getFullYear() };
   if (!record.name) { showNotice("Scan QR code personal terlebih dahulu."); return; }
-  try { await saveRecord(record); showNotice(`Absensi ${record.status.toLowerCase()} berhasil disimpan.`, "success"); $("#attendanceForm").reset(); selectedLocation = null; scannedBarcode = ""; scannedPerson = ""; $("#scanStatus").textContent = "Belum ada barcode yang dipindai."; $("#locationStatus").textContent = "Mendeteksi lokasi otomatis..."; $("#locationDetail").textContent = "Izinkan akses GPS saat browser memintanya. Lokasi akan diperbarui otomatis."; takeLocation(false); } catch { showNotice("Database lokal tidak dapat diakses. Coba muat ulang halaman."); }
+  try { await saveRecord(record); showNotice(`Absensi ${record.status.toLowerCase()} berhasil disimpan.`, "success"); $("#attendanceForm").reset(); selectedLocation = null; scannedBarcode = ""; scannedPerson = ""; $("#scanStatus").textContent = "Belum ada barcode yang dipindai."; $("#locationStatus").textContent = "Mendeteksi lokasi otomatis..."; $("#locationDetail").textContent = "Izinkan akses GPS saat browser memintanya. Lokasi akan diperbarui otomatis."; takeLocation(false); } catch (error) { showNotice(`Absensi gagal tersimpan ke server. Pastikan halaman dibuka melalui http://localhost:8080/index.html dan server.py berjalan. ${error.message}`); }
 });
 
 initializeMap();
