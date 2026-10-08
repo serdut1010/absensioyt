@@ -3,7 +3,6 @@ const PERSONAL_BARCODES = {
   SHERLY: "OYITOK-SHERLY-001",
   SAVINA: "OYITOK-SAVINA-001"
 };
-const API_URL = `http://${window.location.hostname || "localhost"}:8080/api/attendance`;
 let selectedLocation = null;
 let scannedBarcode = "";
 let scannedPerson = "";
@@ -19,13 +18,28 @@ const formatDate = (date) => new Intl.DateTimeFormat("id-ID", { weekday: "long",
 const formatTime = (date) => new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(date);
 
 async function saveRecord(record) {
-  const response = await fetch(API_URL, {
+  const response = await fetch("http://localhost:8080/api/attendance", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(record)
+    body: JSON.stringify({
+      name: record.name,
+      locationName: record.location_name,
+      latitude: record.latitude,
+      longitude: record.longitude,
+      status: record.status,
+      time: record.time,
+      date: record.date,
+      month: record.month,
+      year: record.year
+    })
   });
-  if (!response.ok) throw new Error("Absensi gagal disimpan ke server");
-  return response.json();
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || "Gagal menyimpan absensi.");
+  }
+
+  return result;
 }
 
 function showNotice(message, type = "error") {
@@ -135,9 +149,9 @@ $("#attendanceForm").addEventListener("submit", async (event) => {
   if (!Object.values(PERSONAL_BARCODES).includes(scannedBarcode)) { showNotice("Scan salah satu barcode Maria, Sherly, atau Savina terlebih dahulu."); return; }
   if (!selectedLocation) { showNotice("Tambahkan lokasi GPS terlebih dahulu."); return; }
   const isPresent = now.getHours() < 7 || (now.getHours() === 7 && now.getMinutes() <= 45);
-  const record = { name: scannedPerson, locationName: selectedLocation.name, latitude: selectedLocation.latitude, longitude: selectedLocation.longitude, status: isPresent ? "Hadir" : "Terlambat", time: formatTime(now), date: now.toISOString(), month: now.getMonth() + 1, year: now.getFullYear() };
+  const record = { name: scannedPerson, location_name: selectedLocation.name, latitude: selectedLocation.latitude, longitude: selectedLocation.longitude, status: isPresent ? "Hadir" : "Terlambat", time: formatTime(now), date: now.toISOString(), month: now.getMonth() + 1, year: now.getFullYear() };
   if (!record.name) { showNotice("Scan QR code personal terlebih dahulu."); return; }
-  try { await saveRecord(record); showNotice(`Absensi ${record.status.toLowerCase()} berhasil disimpan.`, "success"); $("#attendanceForm").reset(); selectedLocation = null; scannedBarcode = ""; scannedPerson = ""; $("#scanStatus").textContent = "Belum ada barcode yang dipindai."; $("#locationStatus").textContent = "Mendeteksi lokasi otomatis..."; $("#locationDetail").textContent = "Izinkan akses GPS saat browser memintanya. Lokasi akan diperbarui otomatis."; takeLocation(false); } catch (error) { showNotice(`Absensi gagal tersimpan ke server. Pastikan halaman dibuka melalui http://localhost:8080/index.html dan server.py berjalan. ${error.message}`); }
+  try { await saveRecord(record); showNotice(`Absensi ${record.status.toLowerCase()} berhasil disimpan.`, "success"); $("#attendanceForm").reset(); selectedLocation = null; scannedBarcode = ""; scannedPerson = ""; $("#scanStatus").textContent = "Belum ada barcode yang dipindai."; $("#locationStatus").textContent = "Mendeteksi lokasi otomatis..."; $("#locationDetail").textContent = "Izinkan akses GPS saat browser memintanya. Lokasi akan diperbarui otomatis."; takeLocation(false); } catch (error) { showNotice(`Absensi gagal disimpan: ${error.message}`); }
 });
 
 initializeMap();

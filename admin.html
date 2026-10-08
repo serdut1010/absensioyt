@@ -44,6 +44,14 @@
       .status.late { color:var(--late-ink); background:var(--late); }
       .empty { padding:28px; color:var(--muted); text-align:center; font-size:12px; }
       .error { margin:14px 0; padding:12px; border-radius:8px; background:#fff0ed; color:#bc4e43; font-size:12px; }
+      .login-panel { max-width:420px; margin:30px 0; padding:22px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+      .login-panel h2 { margin:0 0 8px; font:600 20px "Space Grotesk",sans-serif; }
+      .login-panel p { color:var(--muted);font-size:12px;line-height:1.5; }
+      .login-panel form { display:grid;gap:12px;margin-top:18px; }
+      .login-panel label { font-size:11px; }
+      .login-panel input { width:100%;min-height:42px;font-size:14px; }
+      .login-panel button { min-height:42px; }
+      .toolbar .logout-button { margin-left:auto;background:#fff;color:var(--teal);border-color:var(--line); }
       footer { display:flex; justify-content:space-between; gap:20px; margin-top:30px; color:#9bacaa; font-size:9px; letter-spacing:1px; }
       @media (max-width:700px) { main { width:min(100% - 32px,1180px); padding-top:22px; } header { display:block; }.header-note { margin-top:12px; text-align:left; }.summary { grid-template-columns:1fr; gap:10px; }.summary-card { padding:14px 16px; }.toolbar { align-items:stretch; flex-direction:column; }.toolbar label,.toolbar select,.toolbar input,.toolbar button { width:100%; } footer { display:block; } footer span { display:block; margin-top:8px; } }
       @media (max-width:500px) {
@@ -98,7 +106,6 @@
     </main>
     <script>
       let records = [];
-      const apiUrl = `http://${window.location.hostname || "localhost"}:8080/api/attendance`;
       const monthFilter = document.querySelector("#monthFilter");
       const statusFilter = document.querySelector("#statusFilter");
       const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[character]));
@@ -106,9 +113,23 @@
       const dateParts = (date) => ({ day: new Intl.DateTimeFormat("id-ID", { weekday:"long" }).format(date), date: new Intl.DateTimeFormat("id-ID", { day:"numeric" }).format(date), month: new Intl.DateTimeFormat("id-ID", { month:"long", year:"numeric" }).format(date) });
 
       async function getRecords() {
-        const response = await fetch(apiUrl, { cache:"no-store" });
-        if (!response.ok) throw new Error("Data absensi gagal dimuat");
-        return (await response.json()).sort((first, second) => recordDate(second) - recordDate(first));
+        const endpoints = [
+          "attendance-data.json",
+          "http://localhost:8080/api/attendance"
+        ];
+
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, { cache: "no-store" });
+            if (!response.ok) continue;
+            const data = await response.json();
+            return Array.isArray(data) ? data.sort((first, second) => recordDate(second) - recordDate(first)) : [];
+          } catch {
+            // lanjut ke endpoint berikutnya
+          }
+        }
+
+        throw new Error("Tidak ada data absensi yang tersedia di GitHub atau server lokal.");
       }
 
       function filteredRecords() {
@@ -130,17 +151,25 @@
         if (!visibleRecords.length) { table.innerHTML = '<tr><td class="empty" colspan="7">Belum ada data sesuai filter.</td></tr>'; return; }
         table.innerHTML = visibleRecords.map((record) => {
           const parts = dateParts(recordDate(record));
-          return `<tr><td><strong>${escapeHtml(record.name)}</strong><small>${escapeHtml(record.locationName)}</small></td><td>${parts.day}</td><td>${parts.date}</td><td>${parts.month}</td><td>${escapeHtml(record.time)}</td><td><span class="status ${record.status === "Hadir" ? "present" : "late"}">${escapeHtml(record.status)}</span></td><td>${escapeHtml(record.locationName)}</td></tr>`;
+          const locationName = record.locationName || record.location_name;
+          return `<tr><td><strong>${escapeHtml(record.name)}</strong><small>${escapeHtml(locationName)}</small></td><td>${parts.day}</td><td>${parts.date}</td><td>${parts.month}</td><td>${escapeHtml(record.time)}</td><td><span class="status ${record.status === "Hadir" ? "present" : "late"}">${escapeHtml(record.status)}</span></td><td>${escapeHtml(locationName)}</td></tr>`;
         }).join("");
       }
 
       async function loadRecords() {
-        try { records = await getRecords(); document.querySelector("#errorMessage").hidden = true; render(); }
-        catch { const error = document.querySelector("#errorMessage"); const adminUrl = `http://${window.location.hostname || "localhost"}:8080/admin.html`; error.textContent = `Admin tidak terhubung ke server database. Buka ${adminUrl} dan pastikan server.py berjalan.`; error.hidden = false; }
+        try {
+          records = await getRecords();
+          document.querySelector("#errorMessage").hidden = true;
+          render();
+        } catch (error) {
+          const message = document.querySelector("#errorMessage");
+          message.textContent = `Gagal memuat riwayat: ${error.message}`;
+          message.hidden = false;
+        }
       }
 
       function exportCsv() {
-        const rows = filteredRecords().map((record) => { const parts = dateParts(recordDate(record)); return [record.name, parts.day, parts.date, parts.month, record.time, record.status, record.locationName]; });
+        const rows = filteredRecords().map((record) => { const parts = dateParts(recordDate(record)); const locationName = record.locationName || record.location_name; return [record.name, parts.day, parts.date, parts.month, record.time, record.status, locationName]; });
         const csv = [["Nama","Hari","Tanggal","Bulan","Waktu","Status","Lokasi"], ...rows].map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
         const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], { type:"text/csv;charset=utf-8" })); link.download = "rekap-absensi.csv"; link.click(); URL.revokeObjectURL(link.href);
       }
